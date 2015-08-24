@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-var packet_num int = 0
+var packet_num int = 1
 
 func CheckError(err error) {
 	if err  != nil {
@@ -17,6 +17,8 @@ func CheckError(err error) {
 
 func main() {
 	serv_addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+	listen_addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
+
 	CheckError(err)
 
 	local_addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
@@ -25,27 +27,32 @@ func main() {
 	conn, err := net.DialUDP("udp", local_addr, serv_addr)
 	CheckError(err)
 
+	serv_conn, err := net.ListenUDP("udp", listen_addr)
+
+	CheckError(err)
 	for {
-		actions(conn)
+		actions(conn, serv_conn)
 	}
 
 	defer conn.Close()
 
 }
 
-func actions(conn *net.UDPConn) {
+func actions(conn *net.UDPConn, serv_conn *net.UDPConn) {
 	msg := strconv.Itoa(packet_num)
 	buffer := []byte(msg)
 	fmt.Println("Sending", packet_num)
 	_, err := conn.Write(buffer)
 	i := make(chan int, 20)
-	go wait_for_ack(packet_num)
+	wait_for_ack(serv_conn, packet_num, i)
+	fmt.Println("after waiting for ack", <-i)
 	select {
 	case <-i:
-		return
+	fmt.Println(<-i, "I'm in a select!")
+		break
 	case <-time.After(5 * time.Second):
 		fmt.Println("timed out for", packet_num)
-		go actions(conn)
+		actions(conn, serv_conn)
 	}
 	packet_num := <-i
 	packet_num++
@@ -56,4 +63,3 @@ func actions(conn *net.UDPConn) {
 	time.Sleep(time.Second * 1)
 
 }
-
