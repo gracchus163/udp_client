@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func wait_for_ack(expected int) int {
+func wait_for_ack(expected int) {
 	fmt.Println("Waiting for ACK for", expected)
 	serv_addr, err := net.ResolveUDPAddr("udp", ":10002")
 	CheckError(err)
@@ -32,9 +32,9 @@ func wait_for_ack(expected int) int {
 		fmt.Println("Error: ", err)
 	}
 	if ack_val != -1 {
-		return expected
+		return
 	}
-	return expected-1
+	wait_for_ack(expected)
 }
 
 func check_packet(curr_packet int, expected int) int {
